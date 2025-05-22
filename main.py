@@ -7,8 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+#from sklearn.model_selection import train_test_split
+#from sklearn.metrics import accuracy_score
 import time
 
 # ------------------------------------------------
@@ -178,8 +178,8 @@ start_time = time.time()
 
 W1, b1, W2, b2, W3, b3, losses, accuracies = train_mini_batch(X_train, y_train)
 
-sklearn_train_time = time.time() - start_time
-print(f"Tiempo de entrenamiento (NumPy): {sklearn_train_time:.2f} segundos")
+train_time = time.time() - start_time
+print(f"Tiempo de entrenamiento (NumPy): {train_time:.2f} segundos")
 
 plt.figure(figsize=(12, 5))
 plt.subplot(1, 2, 1)
@@ -197,6 +197,26 @@ plt.ylabel('Accuracy')
 plt.title('Precisión en entrenamiento (MiniBatch)')
 plt.grid(True)
 plt.legend()
+
+# ================================================
+# Evaluación en el set de entrenamiento (NumPy)
+# ================================================
+
+_, _, _, _, _, A3_train = forward(X_train, W1, b1, W2, b2, W3, b3)
+preds_train = (A3_train > 0.5).astype(int)
+train_accuracy = accuracy_score(y_train, preds_train)
+
+print(f"Precisión en entrenamiento (NumPy): {train_accuracy:.4f}")
+
+# ================================================
+# Evaluación en el set de validación (NumPy)
+# ================================================
+
+_, _, _, _, _, A3_val = forward(X_val, W1, b1, W2, b2, W3, b3)
+preds_val = (A3_val > 0.5).astype(int)
+val_accuracy = accuracy_score(y_val, preds_val)
+
+print(f"Precisión en validación (NumPy): {val_accuracy:.4f}")
 
 plt.tight_layout()
 plt.show()
