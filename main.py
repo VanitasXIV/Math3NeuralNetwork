@@ -7,8 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
-#from sklearn.model_selection import train_test_split
-#from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
 import time
 
 # ------------------------------------------------
@@ -78,12 +78,19 @@ df[sales_columns] = scaler.fit_transform(df[sales_columns])
 df = pd.get_dummies(df, columns=['Platform', 'Genre', 'Publisher'], drop_first=True)
 
 # ================================================
-# PARTE 2 - Red Neuronal desde Cero en NumPy
+# PARTE 2 - Red Neuronal en NumPy
 # ================================================
 
 X = df.drop(columns=['Name', 'Rank', 'Exito_Ventas', 'Year'])
 y = df['Exito_Ventas'].values.reshape(-1, 1)
+#Función de scikit-learn para dividir el dataset en entrenamiento y validación
+#Convierte el DataFrame a un array de NumPy
+#El 20% de los datos se utiliza para validación
+#El 80% de los datos se utiliza para entrenamiento
+#El parámetro random_state asegura que la división sea reproducible
+#El parámetro test_size indica el tamaño del conjunto de validación
 X_train, X_val, y_train, y_val = train_test_split(X.astype(np.float64).values, y.astype(np.float64), test_size=0.2, random_state=42)
+
 
 def sigmoid(x):
     x = np.array(x, dtype=np.float64)
