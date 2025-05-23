@@ -6,7 +6,7 @@ Realizar un análisis exhaustivo de una base de datos antes de utilizarla para e
 
 ## Selección de la base de Datos:
 
-La base de datos **Video Games Sales Dataset** es más adecuada para el Trabajo Práctico, y puede convertirse fácilmente en un problema de clasificación a diferencia de la base de datos de Fórmula 1 que contiene varias tablas y requiere de varias transformaciones y conexiones entre tablas para poder trabajarla.
+La base de datos **Video Games Sales Dataset** (https://www.kaggle.com/datasets/zahidmughal2343/video-games-sale) es más adecuada para el Trabajo Práctico, y puede convertirse fácilmente en un problema de clasificación a diferencia de la base de datos de Fórmula 1 (https://www.kaggle.com/datasets/rohanrao/formula-1-world-championship-1950-2020) que contiene varias tablas y requiere de varias transformaciones y conexiones entre tablas para poder trabajarla.
 
 ## ¿Qué contiene?
 
