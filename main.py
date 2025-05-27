@@ -106,6 +106,7 @@ def relu(x):
 def relu_derivative(x):
     return (x > 0).astype(float)
 
+#Se definen dos capas ocultas con 32 y 16 neuronas respectivamente
 def initialize_weights(input_size, hidden1=32, hidden2=16, output=1):
     np.random.seed(42)
     return (
@@ -123,8 +124,13 @@ def forward(X, W1, b1, W2, b2, W3, b3):
     A3 = sigmoid(Z3)
     return Z1, A1, Z2, A2, Z3, A3
 
-def train_mini_batch(X, y, batch_size=256, epochs=50, lr=0.05, hidden1=32, hidden2=16):
+##Try more epochs and less batch size
+##Usamos 3000 ejemplos por eficiencia. Se entrenan en bloques de 256 ejemplos
+##Por cada batch se calcula forward, el error con cross-entropy y se hace backpropagation hacía el mínimo error
+## Se repite el proceso durante 5000 épocas
+def train_mini_batch(X, y, batch_size=256, epochs=1200, lr=0.05, hidden1=32, hidden2=16):
     np.random.seed(42)
+    #Inicialización
     sample_indices = np.random.choice(len(X), size=3000, replace=False)
     X = X[sample_indices].astype(np.float64)
     y = y[sample_indices].astype(np.float64)
@@ -132,6 +138,7 @@ def train_mini_batch(X, y, batch_size=256, epochs=50, lr=0.05, hidden1=32, hidde
     W1, b1, W2, b2, W3, b3 = initialize_weights(X.shape[1], hidden1, hidden2)
     loss_history, acc_history = [], []
 
+    #Ciclo de entrenamiento
     for epoch in range(epochs):
         indices = np.arange(X.shape[0])
         np.random.shuffle(indices)
@@ -145,36 +152,49 @@ def train_mini_batch(X, y, batch_size=256, epochs=50, lr=0.05, hidden1=32, hidde
             X_batch = X[i:i + batch_size]
             y_batch = y[i:i + batch_size]
 
+            #Forward pass. se pasa el batch por la red y se 
+            #obtienen las activaciones de cada capa
+            #A3 es la salida final (predicción) del modelo para ese batch
             Z1, A1, Z2, A2, Z3, A3 = forward(X_batch, W1, b1, W2, b2, W3, b3)
 
+            #Funcion de pérdida (cross-entropy)
+            # Se calcula el error del modelo con la función binary cross-entropy
             loss = -np.mean(y_batch * np.log(A3 + 1e-8) + (1 - y_batch) * np.log(1 - A3 + 1e-8))
             batch_losses.append(loss)
 
+            #Calculo de precisión
+            # Se mide cuántos aciertos hubo en el mini-batch
             predictions = (A3 > 0.5).astype(int)
             acc = accuracy_score(y_batch, predictions)
             batch_accuracies.append(acc)
 
-            dZ3 = A3 - y_batch
-            dW3 = A2.T @ dZ3 / X_batch.shape[0]
+            #Backpropagation
+            dZ3 = A3 - y_batch #Derivada del error de salida
+            dW3 = A2.T @ dZ3 / X_batch.shape[0] #Gradiente de pesos entre capa 2 y salida
             db3 = np.sum(dZ3, axis=0, keepdims=True) / X_batch.shape[0]
 
+            #Se comienza a propagar el error hacia atrás
+            #Derivada de la capa oculta 2
             dA2 = dZ3 @ W3.T
             dZ2 = dA2 * relu_derivative(Z2)
             dW2 = A1.T @ dZ2 / X_batch.shape[0]
             db2 = np.sum(dZ2, axis=0, keepdims=True) / X_batch.shape[0]
 
+            #Derivada de la capa oculta 1
             dA1 = dZ2 @ W2.T
             dZ1 = dA1 * relu_derivative(Z1)
             dW1 = X_batch.T @ dZ1 / X_batch.shape[0]
             db1 = np.sum(dZ1, axis=0, keepdims=True) / X_batch.shape[0]
 
+            #Actualización de pesos y sesgos
             W3 = W3 - lr * dW3
             b3 = b3 - lr * db3
             W2 = W2 - lr * dW2
             b2 = b2 - lr * db2
             W1 = W1 - lr * dW1
             b1 = b1 - lr * db1
-
+            
+        #Se almacenan métricas de pérdida y precisión
         loss_history.append(np.mean(batch_losses))
         acc_history.append(np.mean(batch_accuracies))
 

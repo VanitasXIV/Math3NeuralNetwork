@@ -64,7 +64,7 @@ X_train, X_val, y_train, y_val = train_test_split(X.astype(np.float64).values, y
 # ================================================
 print("Entrenando red neuronal con scikit-learn (MLPClassifier)...")
 start_time = time.time()
-clf = MLPClassifier(hidden_layer_sizes=(32, 16), activation='relu', solver='sgd', max_iter=50, random_state=42)
+clf = MLPClassifier(hidden_layer_sizes=(32, 16), activation='relu', solver='sgd', max_iter=1200, random_state=42)
 clf.fit(X_train, y_train)
 sklearn_train_time = time.time() - start_time
 
