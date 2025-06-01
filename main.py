@@ -73,8 +73,8 @@ print(correlation_with_target)
 # Paso 4: Transformaciones Preliminares
 # ------------------------------------------------
 
-scaler = MinMaxScaler()
-df[sales_columns] = scaler.fit_transform(df[sales_columns])
+# Normalización usando la desviación estándar (Z-score)
+df[sales_columns] = (df[sales_columns] - df[sales_columns].mean()) / df[sales_columns].std()
 df = pd.get_dummies(df, columns=['Platform', 'Genre', 'Publisher'], drop_first=True)
 
 # ================================================
@@ -128,17 +128,17 @@ def forward(X, W1, b1, W2, b2, W3, b3):
 ##Usamos 3000 ejemplos por eficiencia. Se entrenan en bloques de 256 ejemplos
 ##Por cada batch se calcula forward, el error con cross-entropy y se hace backpropagation hacía el mínimo error
 ## Se repite el proceso durante 5000 épocas
-def train_mini_batch(X, y, batch_size=256, epochs=1200, lr=0.05, hidden1=32, hidden2=16):
+def train_mini_batch(X, y, X_val, y_val, batch_size=256, epochs=1200, lr=0.05, hidden1=32, hidden2=16):
     np.random.seed(42)
-    #Inicialización
+    # Inicialización
     sample_indices = np.random.choice(len(X), size=3000, replace=False)
     X = X[sample_indices].astype(np.float64)
     y = y[sample_indices].astype(np.float64)
 
     W1, b1, W2, b2, W3, b3 = initialize_weights(X.shape[1], hidden1, hidden2)
-    loss_history, acc_history = [], []
+    loss_history, train_acc_history, val_acc_history = [], [], []
 
-    #Ciclo de entrenamiento
+    # Ciclo de entrenamiento
     for epoch in range(epochs):
         indices = np.arange(X.shape[0])
         np.random.shuffle(indices)
@@ -146,104 +146,78 @@ def train_mini_batch(X, y, batch_size=256, epochs=1200, lr=0.05, hidden1=32, hid
         y = y[indices]
 
         batch_losses = []
-        batch_accuracies = []
 
         for i in range(0, X.shape[0], batch_size):
             X_batch = X[i:i + batch_size]
             y_batch = y[i:i + batch_size]
 
-            #Forward pass. se pasa el batch por la red y se 
-            #obtienen las activaciones de cada capa
-            #A3 es la salida final (predicción) del modelo para ese batch
+            # Forward pass
             Z1, A1, Z2, A2, Z3, A3 = forward(X_batch, W1, b1, W2, b2, W3, b3)
 
-            #Funcion de pérdida (cross-entropy)
-            # Se calcula el error del modelo con la función binary cross-entropy
+            # Loss calculation
             loss = -np.mean(y_batch * np.log(A3 + 1e-8) + (1 - y_batch) * np.log(1 - A3 + 1e-8))
             batch_losses.append(loss)
 
-            #Calculo de precisión
-            # Se mide cuántos aciertos hubo en el mini-batch
-            predictions = (A3 > 0.5).astype(int)
-            acc = accuracy_score(y_batch, predictions)
-            batch_accuracies.append(acc)
-
-            #Backpropagation
-            dZ3 = A3 - y_batch #Derivada del error de salida
-            dW3 = A2.T @ dZ3 / X_batch.shape[0] #Gradiente de pesos entre capa 2 y salida
+            # Backpropagation
+            dZ3 = A3 - y_batch
+            dW3 = A2.T @ dZ3 / X_batch.shape[0]
             db3 = np.sum(dZ3, axis=0, keepdims=True) / X_batch.shape[0]
 
-            #Se comienza a propagar el error hacia atrás
-            #Derivada de la capa oculta 2
             dA2 = dZ3 @ W3.T
             dZ2 = dA2 * relu_derivative(Z2)
             dW2 = A1.T @ dZ2 / X_batch.shape[0]
             db2 = np.sum(dZ2, axis=0, keepdims=True) / X_batch.shape[0]
 
-            #Derivada de la capa oculta 1
             dA1 = dZ2 @ W2.T
             dZ1 = dA1 * relu_derivative(Z1)
             dW1 = X_batch.T @ dZ1 / X_batch.shape[0]
             db1 = np.sum(dZ1, axis=0, keepdims=True) / X_batch.shape[0]
 
-            #Actualización de pesos y sesgos
-            W3 = W3 - lr * dW3
-            b3 = b3 - lr * db3
-            W2 = W2 - lr * dW2
-            b2 = b2 - lr * db2
-            W1 = W1 - lr * dW1
-            b1 = b1 - lr * db1
-            
-        #Se almacenan métricas de pérdida y precisión
-        loss_history.append(np.mean(batch_losses))
-        acc_history.append(np.mean(batch_accuracies))
+            # Update weights and biases
+            W3 -= lr * dW3
+            b3 -= lr * db3
+            W2 -= lr * dW2
+            b2 -= lr * db2
+            W1 -= lr * dW1
+            b1 -= lr * db1
 
-    return W1, b1, W2, b2, W3, b3, loss_history, acc_history
+        # Calculate metrics for the epoch
+        loss_history.append(np.mean(batch_losses))
+
+        # Training accuracy
+        _, _, _, _, _, A3_train = forward(X, W1, b1, W2, b2, W3, b3)
+        train_preds = (A3_train > 0.5).astype(int)
+        train_acc = accuracy_score(y, train_preds)
+        train_acc_history.append(train_acc)
+
+        # Validation accuracy
+        _, _, _, _, _, A3_val = forward(X_val, W1, b1, W2, b2, W3, b3)
+        val_preds = (A3_val > 0.5).astype(int)
+        val_acc = accuracy_score(y_val, val_preds)
+        val_acc_history.append(val_acc)
+
+    return W1, b1, W2, b2, W3, b3, loss_history, train_acc_history, val_acc_history
 
 print("Entrenando red neuronal con NumPy...")
 start_time = time.time()
 
-W1, b1, W2, b2, W3, b3, losses, accuracies = train_mini_batch(X_train, y_train)
+W1, b1, W2, b2, W3, b3, losses, train_accuracies, val_accuracies = train_mini_batch(
+    X_train, y_train, X_val, y_val
+)
 
 train_time = time.time() - start_time
 print(f"Tiempo de entrenamiento (NumPy): {train_time:.2f} segundos")
 
-plt.figure(figsize=(12, 5))
-plt.subplot(1, 2, 1)
-plt.plot(losses, label='Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Función de pérdida (MiniBatch)')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(1, 2, 2)
-plt.plot(accuracies, label='Accuracy', color='green')
+# ================================================
+# GRÁFICO DE EVOLUCIÓN DE PRECISIÓN
+# ================================================
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, len(train_accuracies) + 1), train_accuracies, label='Train Accuracy', color='blue')
+plt.plot(range(1, len(val_accuracies) + 1), val_accuracies, label='Validation Accuracy', color='orange')
+plt.title('Evolución de Precisión - Entrenamiento vs Validación')
 plt.xlabel('Epoch')
 plt.ylabel('Accuracy')
-plt.title('Precisión en entrenamiento (MiniBatch)')
-plt.grid(True)
 plt.legend()
-
-# ================================================
-# Evaluación en el set de entrenamiento (NumPy)
-# ================================================
-
-_, _, _, _, _, A3_train = forward(X_train, W1, b1, W2, b2, W3, b3)
-preds_train = (A3_train > 0.5).astype(int)
-train_accuracy = accuracy_score(y_train, preds_train)
-
-print(f"Precisión en entrenamiento (NumPy): {train_accuracy:.4f}")
-
-# ================================================
-# Evaluación en el set de validación (NumPy)
-# ================================================
-
-_, _, _, _, _, A3_val = forward(X_val, W1, b1, W2, b2, W3, b3)
-preds_val = (A3_val > 0.5).astype(int)
-val_accuracy = accuracy_score(y_val, preds_val)
-
-print(f"Precisión en validación (NumPy): {val_accuracy:.4f}")
-
+plt.grid(True)
 plt.tight_layout()
 plt.show()

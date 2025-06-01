@@ -1,16 +1,20 @@
 # ================================================
 # PARTE 1 - Análisis Exploratorio y Transformaciones
 # ================================================
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 from sklearn.neural_network import MLPClassifier
+from sklearn.exceptions import ConvergenceWarning  # Importar ConvergenceWarning
 import time
+import warnings  # Importar módulo de warnings
+
+# Ignorar warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 # ------------------------------------------------
 # Paso 0: Cargar el dataset
@@ -27,15 +31,13 @@ df['Exito_Ventas'] = (df['Global_Sales'] >= 1.0).astype(int)
 # ------------------------------------------------
 sales_columns = ['NA_Sales', 'EU_Sales', 'JP_Sales', 'Other_Sales', 'Global_Sales']
 outliers_report = {}
-
 for col in sales_columns:
     Q1 = df[col].quantile(0.25)
     Q3 = df[col].quantile(0.75)
     IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)]
-    outliers_report[col] = len(outliers)
+    lb = Q1 - 1.5 * IQR
+    ub = Q3 + 1.5 * IQR
+    outliers_report[col] = df[(df[col] < lb) | (df[col] > ub)].shape[0]
 
 # ------------------------------------------------
 # Paso 3: Matriz de Correlación
@@ -55,40 +57,71 @@ df = pd.get_dummies(df, columns=['Platform', 'Genre', 'Publisher'], drop_first=T
 # ================================================
 # PARTE 2 - Preparación de datos
 # ================================================
-X = df.drop(columns=['Name', 'Rank', 'Exito_Ventas', 'Year'])
-y = df['Exito_Ventas'].values.reshape(-1, 1)
-X_train, X_val, y_train, y_val = train_test_split(X.astype(np.float64).values, y.astype(np.float64).ravel(), test_size=0.2, random_state=42)
+X = df.drop(columns=['Name', 'Rank', 'Exito_Ventas', 'Year']).astype(np.float64).values
+y = df['Exito_Ventas'].values.ravel()
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # ================================================
-# PARTE 3 - Implementación con scikit-learn
+# PARTE 3 - Entrenamiento con Early Stopping y Ajustes
 # ================================================
 print("Entrenando red neuronal con scikit-learn (MLPClassifier)...")
+
+# Total de iteraciones máximas permitidas
+max_epochs = 500  # Incrementar el número máximo de épocas
+lr = 0.05  # Se puede reducir la tasa de aprendizaje para mejorar la estabilidad
+patience = 20  # Incrementar paciencia para permitir más tiempo de mejora
+best_val_acc = 0
+epochs_without_improvement = 0
+
+# Configuro el clasificador con ajustes
+clf = MLPClassifier(
+    hidden_layer_sizes=(64, 32),  # Incrementar la capacidad del modelo
+    activation='relu',
+    learning_rate_init=lr,
+    max_iter=1,           # UNA iteración por llamada a fit()
+    warm_start=True,      # conserva los pesos y sigue entrenando
+    random_state=42
+)
+
+train_accs = []
+val_accs = []
+
 start_time = time.time()
-clf = MLPClassifier(hidden_layer_sizes=(32, 16), activation='relu', solver='sgd', max_iter=1200, random_state=42)
-clf.fit(X_train, y_train)
+for ep in range(1, max_epochs + 1):
+    clf.fit(X_train, y_train)
+    train_acc = clf.score(X_train, y_train)
+    val_acc = clf.score(X_val, y_val)
+    train_accs.append(train_acc)
+    val_accs.append(val_acc)
+
+    # Verificar mejora en validación
+    if val_acc > best_val_acc:
+        best_val_acc = val_acc
+        epochs_without_improvement = 0
+    else:
+        epochs_without_improvement += 1
+
+    # Detener si no hay mejora en 'patience' épocas consecutivas
+    if epochs_without_improvement >= patience:
+        print(f"Entrenamiento detenido por early stopping en la época {ep}.")
+        break
+
 sklearn_train_time = time.time() - start_time
 
-# Evaluación
-train_accuracy = clf.score(X_train, y_train)
-val_accuracy = clf.score(X_val, y_val)
-
-print(f"Precisión en entrenamiento (sklearn): {train_accuracy:.4f}")
-print(f"Precisión en validación (sklearn): {val_accuracy:.4f}")
-print(f"Tiempo de entrenamiento (sklearn): {sklearn_train_time:.2f} segundos")
-
+print(f"Última precisión en entrenamiento: {train_accs[-1]:.4f}")
+print(f"Última precisión en validación:   {val_accs[-1]:.4f}")
+print(f"Tiempo total de entrenamiento:    {sklearn_train_time:.2f} segundos")
 
 # ================================================
-# COMPARACIÓN VISUAL DE RENDIMIENTO
+# CURVA DE APRENDIZAJE Y VALIDACIÓN
 # ================================================
-plt.figure(figsize=(8, 5))
-bars = plt.bar(['Train Accuracy', 'Validation Accuracy'], [train_accuracy, val_accuracy], color=['blue', 'green'])
-plt.ylim(0, 1)
-plt.title('Comparación de Precisión - scikit-learn')
-for bar in bars:
-    yval = bar.get_height()
-    plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f'{yval:.2f}', ha='center', va='bottom')
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, len(train_accs) + 1), train_accs, label='Entrenamiento')
+plt.plot(range(1, len(val_accs) + 1), val_accs, label='Validación')
+plt.xlabel('Época')
 plt.ylabel('Accuracy')
-plt.grid(True, axis='y')
+plt.title('Curva de Aprendizaje y Validación')
+plt.legend()
+plt.grid(True)
 plt.tight_layout()
 plt.show()
-

@@ -277,7 +277,7 @@ Pero debido a que no es óptimo manejar semejante cantidad de datos se utilizar�
 | **Funciones de activación** | ReLU \+ Sigmoid final | ReLU \+ Logística final (por defecto en clasificación) |
 | **Método de entrenamiento** | SGD manual con mini-batch | SGD automático con mini-batch |
 | **Tasa de aprendizaje** | 0.05 (fija) | 0.05 (fija) |
-| **Épocas** | 50 | 50 |
+| **Épocas** | 1200 | 1200 |
 | **Regularización** | Ninguna | L2 (por defecto, se puede desactivar) |
 | **Curva de pérdida** | Implementada manualmente, visible | No accesible directamente (loss\_curve\_ disponible si verbose=True) |
 | **Precisión entrenamiento** | \~0.80–0.85 (dependiendo de muestras y ruido) | Similar (\~0.82–0.86) |
