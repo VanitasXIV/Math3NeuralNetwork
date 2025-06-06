@@ -320,9 +320,8 @@ Estimamos que la diferencia tan dispar en ambos equipos se debe a la caché 3D d
 
 * Ambas redes aprenden correctamente y predicen con precisión similar
 
-* scikit-learn es **más rápida, más robusta, y más adecuada para producción o prototipos rápidos**.
+* scikit-learn es **menos rápida pero, más robusta, y más adecuada para producción o prototipos rápidos**.
 
-* NumPy es ideal para **aprender el funcionamiento interno**, comprender backpropagation, y experimentar con ajustes personalizados.
+* NumPy es ideal para **aprender el funcionamiento interno**, comprender backpropagation, y experimentar con ajustes personalizados a dedo.
 
-Ambas implementaciones son válidas y complementarias según el objetivo en mente: educativo o productivo.
-
+Ambas implementaciones son válidas y totalmente complementarias

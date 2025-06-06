@@ -221,3 +221,9 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
+# ================================================
+# IMPRIMIR PRECISIONES FINALES
+# ================================================
+print(f"Precisión final en entrenamiento: {train_accuracies[-1]:.4f}")
+print(f"Precisión final en validación: {val_accuracies[-1]:.4f}")
